@@ -20,13 +20,59 @@ limitations under the License.
     <parent>
         <artifactId>minifi</artifactId>
         <groupId>org.apache.nifi.minifi</groupId>
-        <version>0.2.1-SNAPSHOT</version>
+        <version>0.6.0-SNAPSHOT</version>
     </parent>
     <artifactId>minifi-assembly</artifactId>
     <packaging>pom</packaging>
     <description>This is the assembly of Apache NiFi - MiNiFi</description>
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <dependencies>
+                    <dependency>
+                        <groupId>ant-contrib</groupId>
+                        <artifactId>ant-contrib</artifactId>
+                        <version>20020829</version>
+                    </dependency>
+                </dependencies>
+                <executions>
+                    <execution>
+                        <id>download-commons-daemon</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <tasks>
+                                <taskdef resource="net/sf/antcontrib/antcontrib.properties" />
+                                <if>
+                                    <available file="${basedir}/target/minifiw.exe" />
+                                    <then>
+                                        <echo message="Skipping download of commons-daemon." />
+                                    </then>
+                                    <else>
+                                        <echo message="Downloading Commons Daemon Windows binaries." />
+                                        <get src="http://apache.claz.org/commons/daemon/binaries/windows/commons-daemon-1.1.0-bin-windows.zip" dest="${java.io.tmpdir}/commons-daemon-1.1.0-bin-windows.zip" skipexisting="true" />
+                                        <local name="checksum.matches" />
+                                        <property name="sha256sum" value="b5a211f826dc4c0d90508eb1222fe00d70c04a960a6c06540b13ccc5ca71d377" />
+                                        <checksum file="${java.io.tmpdir}/commons-daemon-1.1.0-bin-windows.zip" algorithm="SHA-256" property="${sha256sum}" verifyProperty="checksum.matches" />
+                                        <echo message="Checksum match = ${checksum.matches}" />
+                                        <condition property="checksum.matches.fail">
+                                            <equals arg1="${checksum.matches}" arg2="false" />
+                                        </condition>
+                                        <fail if="checksum.matches.fail">Checksum error</fail>
+                                        <unzip src="${java.io.tmpdir}/commons-daemon-1.1.0-bin-windows.zip" dest="${java.io.tmpdir}" />
+                                        <copy file="${java.io.tmpdir}/prunmgr.exe" tofile="${basedir}/target/minifiw.exe" />
+                                        <copy file="${java.io.tmpdir}/amd64/prunsrv.exe" tofile="${basedir}/target/minifi.exe" />
+                                    </else>
+                                </if>
+                            </tasks>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <artifactId>maven-assembly-plugin</artifactId>
                 <configuration>
@@ -139,23 +185,13 @@ limitations under the License.
             <groupId>org.apache.nifi.minifi</groupId>
             <artifactId>minifi-provenance-reporting-nar</artifactId>
             <type>nar</type>
-            <version>0.2.1-SNAPSHOT</version>
-        </dependency>
-
-        <!-- MiNiFi NiFi Dependencies -->
-        <dependency>
-            <groupId>org.apache.nifi</groupId>
-            <artifactId>nifi-processor-utils</artifactId>
+            <version>0.6.0-SNAPSHOT</version>
         </dependency>
 
         <!-- NiFi Assembly Dependencies-->
         <dependency>
             <groupId>org.apache.nifi</groupId>
             <artifactId>nifi-api</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.nifi</groupId>
-            <artifactId>nifi-ssl-context-service-api</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.nifi</groupId>
@@ -187,12 +223,12 @@ limitations under the License.
             <groupId>org.apache.nifi</groupId>
             <artifactId>nifi-persistent-provenance-repository</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.apache.nifi</groupId>
-            <artifactId>nifi-distributed-cache-client-service-api</artifactId>
-        </dependency>
 
         <!-- Provided in NiFi so must include here too -->
+        <dependency>
+            <groupId>org.apache.nifi</groupId>
+            <artifactId>nifi-security-utils</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.bouncycastle</groupId>
             <artifactId>bcprov-jdk15on</artifactId>

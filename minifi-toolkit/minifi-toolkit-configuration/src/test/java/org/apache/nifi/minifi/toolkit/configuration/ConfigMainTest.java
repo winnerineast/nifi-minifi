@@ -168,6 +168,15 @@ public class ConfigMainTest {
     }
 
     @Test
+    public void testTransformRoundTripTemplateNoEncodingVersion() throws IOException, JAXBException, SchemaLoaderException {
+        transformRoundTrip("NoTemplateEncodingVersion");
+    }
+
+    @Test
+    public void testTransformRoundTrip15RPGHandling() throws IOException, JAXBException, SchemaLoaderException {
+        transformRoundTrip("1.5_RPG_Handling");
+    }
+    @Test
     public void testTransformRoundTripDecompression() throws IOException, JAXBException, SchemaLoaderException {
         transformRoundTrip("DecompressionCircularFlow");
     }
@@ -215,6 +224,11 @@ public class ConfigMainTest {
     @Test
     public void testTransformRoundTripNestedControllerServices() throws IOException, JAXBException, SchemaLoaderException {
         transformRoundTrip("NestedControllerServices");
+    }
+
+    @Test
+    public void testTransformRoundTripMultipleUriRPG() throws IOException, JAXBException, SchemaLoaderException {
+        transformRoundTrip("MultipleUriRPG");
     }
 
     @Test
@@ -278,8 +292,21 @@ public class ConfigMainTest {
         assertEquals(ConfigMain.ERR_INVALID_ARGS, configMain.execute(new String[]{ConfigMain.UPGRADE}));
     }
 
+    @Test
+    public void testTransformVersionedFlowSnapshotSimple() throws IOException, SchemaLoaderException {
+        transformVsfRoundTrip("VersionedFlowSnapshot-Simple");
+    }
+
     private void transformRoundTrip(String name) throws JAXBException, IOException, SchemaLoaderException {
         Map<String, Object> templateMap = ConfigMain.transformTemplateToSchema(getClass().getClassLoader().getResourceAsStream(name + ".xml")).toMap();
+        Map<String, Object> yamlMap = SchemaLoader.loadYamlAsMap(getClass().getClassLoader().getResourceAsStream(name + ".yml"));
+        assertNoMapDifferences(templateMap, yamlMap);
+        testV2YmlIfPresent(name, yamlMap);
+        testV1YmlIfPresent(name, yamlMap);
+    }
+
+    private void transformVsfRoundTrip(String name) throws IOException, SchemaLoaderException {
+        Map<String, Object> templateMap = ConfigMain.transformVersionedFlowSnapshotToSchema(getClass().getClassLoader().getResourceAsStream(name + ".json")).toMap();
         Map<String, Object> yamlMap = SchemaLoader.loadYamlAsMap(getClass().getClassLoader().getResourceAsStream(name + ".yml"));
         assertNoMapDifferences(templateMap, yamlMap);
         testV2YmlIfPresent(name, yamlMap);

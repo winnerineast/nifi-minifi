@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.util.List;
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -54,8 +55,10 @@ public class MiNiFi {
     public static final String BOOTSTRAP_PORT_PROPERTY = "nifi.bootstrap.listen.port";
     private volatile boolean shutdown = false;
 
+
     public MiNiFi(final NiFiProperties properties)
-        throws ClassNotFoundException, IOException, NoSuchMethodException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+            throws ClassNotFoundException, IOException, NoSuchMethodException, InstantiationException,
+            IllegalAccessException, IllegalArgumentException, InvocationTargetException, FlowEnrichmentException {
         Thread.setDefaultUncaughtExceptionHandler(new UncaughtExceptionHandler() {
             @Override
             public void uncaughtException(final Thread t, final Throwable e) {
@@ -126,9 +129,14 @@ public class MiNiFi {
         ExtensionManager.discoverExtensions(systemBundle, narBundles);
         ExtensionManager.logClassLoaderMapping();
 
+        // Enrich the flow xml using the Extension Manager mapping
+        final FlowParser flowParser = new FlowParser();
+        final FlowEnricher flowEnricher = new FlowEnricher(this, flowParser, properties);
+        flowEnricher.enrichFlowWithBundleInformation();
+
         // load the server from the framework classloader
         Thread.currentThread().setContextClassLoader(frameworkClassLoader);
-        Class<?> minifiServerClass= Class.forName("org.apache.nifi.minifi.MiNiFiServer", true, frameworkClassLoader);
+        Class<?> minifiServerClass = Class.forName("org.apache.nifi.minifi.MiNiFiServer", true, frameworkClassLoader);
         Constructor<?> minifiServerConstructor = minifiServerClass.getConstructor(NiFiProperties.class);
 
         final long startTime = System.nanoTime();
@@ -144,7 +152,10 @@ public class MiNiFi {
             }
 
             final long endTime = System.nanoTime();
-            logger.info("Controller initialization took " + (endTime - startTime) + " nanoseconds.");
+            final long durationNanos = endTime - startTime;
+            // Convert to millis for higher precision and then convert to a float representation of seconds
+            final float durationSeconds = TimeUnit.MILLISECONDS.convert(durationNanos, TimeUnit.NANOSECONDS) / 1000f;
+            logger.info("Controller initialization took {} nanoseconds ({} seconds).", durationNanos, String.format("%.01f", durationSeconds));
         }
     }
 
@@ -215,7 +226,7 @@ public class MiNiFi {
 
                 if (occurrences.get() < minRequiredOccurrences || occurrencesOutOfRange.get() > maxOccurrencesOutOfRange) {
                     logger.warn("MiNiFi has detected that this box is not responding within the expected timing interval, which may cause "
-                        + "Processors to be scheduled erratically. Please see the MiNiFi documentation for more information.");
+                            + "Processors to be scheduled erratically. Please see the MiNiFi documentation for more information.");
                 }
             }
         };
@@ -240,5 +251,9 @@ public class MiNiFi {
         } catch (final Throwable t) {
             logger.error("Failure to launch MiNiFi due to " + t, t);
         }
+    }
+
+    protected List<Bundle> getBundles(final String bundleClass) {
+        return ExtensionManager.getBundles(bundleClass);
     }
 }

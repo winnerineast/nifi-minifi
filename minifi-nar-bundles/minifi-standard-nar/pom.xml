@@ -19,7 +19,7 @@ limitations under the License.
     <parent>
         <artifactId>minifi-nar-bundles</artifactId>
         <groupId>org.apache.nifi.minifi</groupId>
-        <version>0.2.1-SNAPSHOT</version>
+        <version>0.6.0-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -33,13 +33,18 @@ limitations under the License.
     <dependencies>
         <dependency>
             <groupId>org.apache.nifi</groupId>
-            <artifactId>nifi-standard-services-api-nar</artifactId>
-            <type>nar</type>
+            <artifactId>nifi-standard-processors</artifactId>
+            <version>${org.apache.nifi.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.nifi</groupId>
-            <artifactId>nifi-standard-processors</artifactId>
-            <version>${org.apache.nifi.version}</version>
+            <artifactId>nifi-distributed-cache-client-service-api</artifactId>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.nifi</groupId>
+            <artifactId>nifi-standard-services-api-nar</artifactId>
+            <type>nar</type>
         </dependency>
         <dependency>
             <groupId>org.apache.nifi</groupId>
@@ -53,7 +58,7 @@ limitations under the License.
         </dependency>
         <!-- Manage provided dependencies in lib -->
         <dependency>
-            <groupId>com.sun.jersey</groupId>
+            <groupId>org.glassfish.jersey.core</groupId>
             <artifactId>jersey-server</artifactId>
             <scope>provided</scope>
         </dependency>

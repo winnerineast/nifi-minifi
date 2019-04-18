@@ -17,7 +17,6 @@
 
 package org.apache.nifi.minifi.bootstrap.configuration.ingestors;
 
-import okhttp3.Call;
 import okhttp3.Credentials;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
@@ -25,11 +24,18 @@ import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 import org.apache.nifi.minifi.bootstrap.ConfigurationFileHolder;
+import org.apache.nifi.minifi.bootstrap.RunMiNiFi;
 import org.apache.nifi.minifi.bootstrap.configuration.ConfigurationChangeNotifier;
 import org.apache.nifi.minifi.bootstrap.configuration.differentiators.WholeConfigDifferentiator;
 import org.apache.nifi.minifi.bootstrap.configuration.differentiators.interfaces.Differentiator;
+import org.apache.nifi.minifi.bootstrap.util.ByteBufferInputStream;
+import org.apache.nifi.minifi.commons.schema.ConfigSchema;
+import org.apache.nifi.minifi.commons.schema.SecurityPropertiesSchema;
+import org.apache.nifi.minifi.commons.schema.common.ConvertableSchema;
 import org.apache.nifi.minifi.commons.schema.common.StringUtil;
+import org.apache.nifi.minifi.commons.schema.serialization.SchemaLoader;
 import org.slf4j.LoggerFactory;
+import org.yaml.snakeyaml.Yaml;
 
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
@@ -37,6 +43,7 @@ import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509TrustManager;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -91,6 +98,7 @@ public class PullHttpChangeIngestor extends AbstractPullChangeIngestor {
     public static final String READ_TIMEOUT_KEY = PULL_HTTP_BASE_KEY + ".read.timeout.ms";
     public static final String DIFFERENTIATOR_KEY = PULL_HTTP_BASE_KEY + ".differentiator";
     public static final String USE_ETAG_KEY = PULL_HTTP_BASE_KEY + ".use.etag";
+    public static final String OVERRIDE_SECURITY = PULL_HTTP_BASE_KEY + ".override.security";
 
     private final AtomicReference<OkHttpClient> httpClientReference = new AtomicReference<>();
     private final AtomicReference<Integer> portReference = new AtomicReference<>();
@@ -101,6 +109,7 @@ public class PullHttpChangeIngestor extends AbstractPullChangeIngestor {
     private volatile String connectionScheme;
     private volatile String lastEtag = "";
     private volatile boolean useEtag = false;
+    private volatile boolean overrideSecurity = false;
 
     public PullHttpChangeIngestor() {
         logger = LoggerFactory.getLogger(PullHttpChangeIngestor.class);
@@ -137,11 +146,19 @@ public class PullHttpChangeIngestor extends AbstractPullChangeIngestor {
         queryReference.set(query);
 
         final String useEtagString = (String) properties.getOrDefault(USE_ETAG_KEY, "false");
-        if ("true".equalsIgnoreCase(useEtagString) || "false".equalsIgnoreCase(useEtagString)){
+        if ("true".equalsIgnoreCase(useEtagString) || "false".equalsIgnoreCase(useEtagString)) {
             useEtag = Boolean.parseBoolean(useEtagString);
         } else {
             throw new IllegalArgumentException("Property, " + USE_ETAG_KEY + ", to specify whether to use the ETag header, must either be a value boolean value (\"true\" or \"false\") or left to " +
                     "the default value of \"false\". It is set to \"" + useEtagString + "\".");
+        }
+
+        final String overrideSecurityProperties = (String) properties.getOrDefault(OVERRIDE_SECURITY, "false");
+        if ("true".equalsIgnoreCase(overrideSecurityProperties) || "false".equalsIgnoreCase(overrideSecurityProperties)) {
+            overrideSecurity = Boolean.parseBoolean(overrideSecurityProperties);
+        } else {
+            throw new IllegalArgumentException("Property, " + OVERRIDE_SECURITY + ", to specify whether to override security properties must either be a value boolean value (\"true\" or \"false\")" +
+                    " or left to the default value of \"false\". It is set to \"" + overrideSecurityProperties + "\".");
         }
 
         httpClientReference.set(null);
@@ -203,36 +220,31 @@ public class PullHttpChangeIngestor extends AbstractPullChangeIngestor {
 
     @Override
     public void run() {
-        try {
-            logger.debug("Attempting to pull new config");
-            HttpUrl.Builder builder = new HttpUrl.Builder()
-                    .host(hostReference.get())
-                    .port(portReference.get())
-                    .encodedPath(pathReference.get());
-            String query = queryReference.get();
-            if (!StringUtil.isNullOrEmpty(query)) {
-                builder = builder.encodedQuery(query);
-            }
-            final HttpUrl url = builder
-                    .scheme(connectionScheme)
-                    .build();
+        logger.debug("Attempting to pull new config");
+        HttpUrl.Builder builder = new HttpUrl.Builder()
+                .host(hostReference.get())
+                .port(portReference.get())
+                .encodedPath(pathReference.get());
+        final String query = queryReference.get();
+        if (!StringUtil.isNullOrEmpty(query)) {
+            builder = builder.encodedQuery(query);
+        }
+        final HttpUrl url = builder
+                .scheme(connectionScheme)
+                .build();
 
+        final Request.Builder requestBuilder = new Request.Builder()
+                .get()
+                .url(url);
 
-            final Request.Builder requestBuilder = new Request.Builder()
-                    .get()
-                    .url(url);
+        if (useEtag) {
+            requestBuilder.addHeader("If-None-Match", lastEtag);
+        }
 
-            if (useEtag) {
-                requestBuilder.addHeader("If-None-Match", lastEtag);
-            }
+        final Request request = requestBuilder.build();
 
-            final Request request = requestBuilder.build();
-
-            final OkHttpClient httpClient = httpClientReference.get();
-
-            final Call call = httpClient.newCall(request);
-            final Response response = call.execute();
-
+        ResponseBody body = null;
+        try (Response response = httpClientReference.get().newCall(request).execute()) {
             logger.debug("Response received: {}", response.toString());
 
             int code = response.code();
@@ -245,19 +257,39 @@ public class PullHttpChangeIngestor extends AbstractPullChangeIngestor {
                 throw new IOException("Got response code " + code + " while trying to pull configuration: " + response.body().string());
             }
 
-            ResponseBody body = response.body();
+            body = response.body();
+
             if (body == null) {
                 logger.warn("No body returned when pulling a new configuration");
                 return;
             }
 
-            ByteBuffer bodyByteBuffer = ByteBuffer.wrap(body.bytes());
+            final ByteBuffer bodyByteBuffer = ByteBuffer.wrap(body.bytes());
+            ByteBuffer readOnlyNewConfig = null;
 
-            if (differentiator.isNew(bodyByteBuffer)) {
-                logger.debug("New change, notifying listener");
+            // checking if some parts of the configuration must be preserved
+            if (overrideSecurity) {
+                readOnlyNewConfig = bodyByteBuffer.asReadOnlyBuffer();
+            } else {
+                logger.debug("Preserving previous security properties...");
 
-                ByteBuffer readOnlyNewConfig = bodyByteBuffer.asReadOnlyBuffer();
+                // get the current security properties from the current configuration file
+                final File configFile = new File(properties.get().getProperty(RunMiNiFi.MINIFI_CONFIG_FILE_KEY));
+                ConvertableSchema<ConfigSchema> configSchema = SchemaLoader.loadConvertableSchemaFromYaml(new FileInputStream(configFile));
+                ConfigSchema currentSchema = configSchema.convert();
+                SecurityPropertiesSchema secProps = currentSchema.getSecurityProperties();
 
+                // override the security properties in the pulled configuration with the previous properties
+                configSchema = SchemaLoader.loadConvertableSchemaFromYaml(new ByteBufferInputStream(bodyByteBuffer.duplicate()));
+                ConfigSchema newSchema = configSchema.convert();
+                newSchema.setSecurityProperties(secProps);
+
+                // return the updated configuration preserving the previous security configuration
+                readOnlyNewConfig = ByteBuffer.wrap(new Yaml().dump(newSchema.toMap()).getBytes()).asReadOnlyBuffer();
+            }
+
+            if (differentiator.isNew(readOnlyNewConfig)) {
+                logger.debug("New change received, notifying listener");
                 configurationChangeNotifier.notifyListeners(readOnlyNewConfig);
                 logger.debug("Listeners notified");
             } else {

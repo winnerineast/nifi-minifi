@@ -17,23 +17,20 @@
 
 package org.apache.nifi.minifi.toolkit.configuration;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.module.jaxb.JaxbAnnotationIntrospector;
 import org.apache.nifi.minifi.commons.schema.ConfigSchema;
 import org.apache.nifi.minifi.commons.schema.common.ConvertableSchema;
-import org.apache.nifi.minifi.commons.schema.common.StringUtil;
 import org.apache.nifi.minifi.commons.schema.exception.SchemaLoaderException;
 import org.apache.nifi.minifi.commons.schema.serialization.SchemaLoader;
 import org.apache.nifi.minifi.commons.schema.serialization.SchemaSaver;
 import org.apache.nifi.minifi.toolkit.configuration.dto.ConfigSchemaFunction;
-import org.apache.nifi.web.api.dto.ComponentDTO;
-import org.apache.nifi.web.api.dto.ConnectableDTO;
-import org.apache.nifi.web.api.dto.ConnectionDTO;
-import org.apache.nifi.web.api.dto.FlowSnippetDTO;
-import org.apache.nifi.web.api.dto.PortDTO;
-import org.apache.nifi.web.api.dto.ProcessGroupDTO;
-import org.apache.nifi.web.api.dto.ProcessorDTO;
-import org.apache.nifi.web.api.dto.RemoteProcessGroupContentsDTO;
-import org.apache.nifi.web.api.dto.RemoteProcessGroupDTO;
-import org.apache.nifi.web.api.dto.RemoteProcessGroupPortDTO;
+import org.apache.nifi.minifi.toolkit.configuration.dto.FlowSnippetDTOEnricher;
+import org.apache.nifi.minifi.toolkit.configuration.registry.NiFiRegConfigSchemaFunction;
+import org.apache.nifi.minifi.toolkit.configuration.registry.VersionedProcessGroupEnricher;
+import org.apache.nifi.registry.flow.VersionedFlowSnapshot;
 import org.apache.nifi.web.api.dto.TemplateDTO;
 
 import javax.xml.bind.JAXBContext;
@@ -44,19 +41,10 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.BiFunction;
 import java.util.function.Function;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import static org.apache.nifi.minifi.commons.schema.common.CollectionUtil.nullToEmpty;
 
 public class ConfigMain {
     public static final int ERR_INVALID_ARGS = 1;
@@ -71,6 +59,7 @@ public class ConfigMain {
     public static final int SUCCESS = 0;
 
     public static final String TRANSFORM = "transform";
+    public static final String TRANSFORM_VFS = "transform-vfs";
     public static final String VALIDATE = "validate";
     public static final String UPGRADE = "upgrade";
     public static final String THERE_ARE_VALIDATION_ERRORS_WITH_THE_TEMPLATE_STILL_OUTPUTTING_YAML_BUT_IT_WILL_NEED_TO_BE_EDITED =
@@ -140,71 +129,13 @@ public class ConfigMain {
         System.out.println();
     }
 
-    private static void enrichFlowSnippetDTO(FlowSnippetDTO flowSnippetDTO) {
-        List<FlowSnippetDTO> allFlowSnippets = getAllFlowSnippets(flowSnippetDTO);
-
-        Set<RemoteProcessGroupDTO> remoteProcessGroups = getAll(allFlowSnippets, FlowSnippetDTO::getRemoteProcessGroups).collect(Collectors.toSet());
-
-        Map<String, String> connectableNameMap = getAll(allFlowSnippets, FlowSnippetDTO::getProcessors).collect(Collectors.toMap(ComponentDTO::getId, ProcessorDTO::getName));
-
-        for (RemoteProcessGroupDTO remoteProcessGroupDTO : remoteProcessGroups) {
-            RemoteProcessGroupContentsDTO contents = remoteProcessGroupDTO.getContents();
-            addConnectables(connectableNameMap, nullToEmpty(contents.getInputPorts()), RemoteProcessGroupPortDTO::getId, RemoteProcessGroupPortDTO::getId);
-            addConnectables(connectableNameMap, nullToEmpty(contents.getOutputPorts()), RemoteProcessGroupPortDTO::getId, RemoteProcessGroupPortDTO::getId);
-        }
-
-        addConnectables(connectableNameMap, getAll(allFlowSnippets, FlowSnippetDTO::getInputPorts).collect(Collectors.toList()), PortDTO::getId, PortDTO::getName);
-        addConnectables(connectableNameMap, getAll(allFlowSnippets, FlowSnippetDTO::getOutputPorts).collect(Collectors.toList()), PortDTO::getId, PortDTO::getName);
-
-        Set<ConnectionDTO> connections = getAll(allFlowSnippets, FlowSnippetDTO::getConnections).collect(Collectors.toSet());
-        for (ConnectionDTO connection : connections) {
-            setName(connectableNameMap, connection.getSource());
-            setName(connectableNameMap, connection.getDestination());
-        }
-
-        for (ConnectionDTO connection : connections) {
-            if (StringUtil.isNullOrEmpty(connection.getName())) {
-                StringBuilder name = new StringBuilder();
-                ConnectableDTO connectionSource = connection.getSource();
-                if (connectionSource != null) {
-                    String connectionSourceName = connectionSource.getName();
-                    name.append(StringUtil.isNullOrEmpty(connectionSourceName) ? connectionSource.getId() : connectionSourceName);
-                }
-                name.append("/");
-                if (connection.getSelectedRelationships() != null && connection.getSelectedRelationships().size() > 0) {
-                    name.append(connection.getSelectedRelationships().iterator().next());
-                }
-                name.append("/");
-                ConnectableDTO connectionDestination = connection.getDestination();
-                if (connectionDestination != null) {
-                    String connectionDestinationName = connectionDestination.getName();
-                    name.append(StringUtil.isNullOrEmpty(connectionDestinationName) ? connectionDestination.getId() : connectionDestinationName);
-                }
-                connection.setName(name.toString());
-            }
-        }
-        nullToEmpty(flowSnippetDTO.getProcessGroups()).stream().map(ProcessGroupDTO::getContents).forEach(ConfigMain::enrichFlowSnippetDTO);
-    }
-
-    private static <T> Stream<T> getAll(List<FlowSnippetDTO> allFlowSnippets, Function<FlowSnippetDTO, Collection<T>> accessor) {
-        return allFlowSnippets.stream().flatMap(f -> accessor.apply(f).stream()).filter(Objects::nonNull);
-    }
-
-    private static List<FlowSnippetDTO> getAllFlowSnippets(FlowSnippetDTO flowSnippetDTO) {
-        List<FlowSnippetDTO> result = new ArrayList<>();
-        getAllFlowSnippets(flowSnippetDTO, result);
-        return result;
-    }
-
-    private static void getAllFlowSnippets(FlowSnippetDTO flowSnippetDTO, List<FlowSnippetDTO> result) {
-        result.add(flowSnippetDTO);
-        nullToEmpty(flowSnippetDTO.getProcessGroups()).stream().map(ProcessGroupDTO::getContents).forEach(f -> getAllFlowSnippets(f, result));
-    }
-
     public static ConfigSchema transformTemplateToSchema(InputStream source) throws JAXBException, IOException {
         try {
             TemplateDTO templateDTO = (TemplateDTO) JAXBContext.newInstance(TemplateDTO.class).createUnmarshaller().unmarshal(source);
-            enrichFlowSnippetDTO(templateDTO.getSnippet());
+
+            FlowSnippetDTOEnricher enricher = new FlowSnippetDTOEnricher();
+            enricher.enrich(templateDTO.getSnippet(), templateDTO.getEncodingVersion());
+
             ConfigSchema configSchema = new ConfigSchemaFunction().apply(templateDTO);
             return configSchema;
         } finally {
@@ -212,26 +143,28 @@ public class ConfigMain {
         }
     }
 
-    private static void setName(Map<String, String> connectableNameMap, ConnectableDTO connectableDTO) {
-        if (connectableDTO != null) {
-            String name = connectableNameMap.get(connectableDTO.getId());
-            if (name != null) {
-                connectableDTO.setName(name);
-            }
+    public static ConfigSchema transformVersionedFlowSnapshotToSchema(InputStream source) throws IOException {
+        try {
+            final ObjectMapper objectMapper = new ObjectMapper();
+            objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+            objectMapper.setAnnotationIntrospector(new JaxbAnnotationIntrospector(objectMapper.getTypeFactory()));
+            objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
+            final VersionedFlowSnapshot versionedFlowSnapshot = objectMapper.readValue(source, VersionedFlowSnapshot.class);
+            return transformVersionedFlowSnapshotToSchema(versionedFlowSnapshot);
+        } finally {
+            source.close();
         }
     }
 
-    private static <T> void addConnectables(Map<String, String> connectableNameMap, Collection<T> hasIdAndNames, Function<T, String> idGetter, Function<T, String> nameGetter) {
-        if (hasIdAndNames != null) {
-            for (T hasIdAndName : hasIdAndNames) {
-                String id = idGetter.apply(hasIdAndName);
-                String name = nameGetter.apply(hasIdAndName);
-                if (!StringUtil.isNullOrEmpty(name)) {
-                    connectableNameMap.put(id, name);
-                }
-            }
-        }
+    public static ConfigSchema transformVersionedFlowSnapshotToSchema(VersionedFlowSnapshot versionedFlowSnapshot) {
+        VersionedProcessGroupEnricher enricher = new VersionedProcessGroupEnricher();
+        enricher.enrich(versionedFlowSnapshot.getFlowContents());
+
+        ConfigSchema configSchema = new NiFiRegConfigSchemaFunction().apply(versionedFlowSnapshot);
+        return configSchema;
     }
+
 
     public int upgrade(String[] args) {
         if (args.length != 3) {
@@ -309,7 +242,13 @@ public class ConfigMain {
         ConfigSchema configSchema = null;
         try (InputStream inputStream = pathInputStreamFactory.create(args[1])) {
             try {
-                configSchema = transformTemplateToSchema(inputStream);
+                // both transform commands call this method, so determine which transform is being done
+                if (TRANSFORM_VFS.equals(args[0])) {
+                    configSchema = transformVersionedFlowSnapshotToSchema(inputStream);
+                }  else {
+                    configSchema = transformTemplateToSchema(inputStream);
+                }
+
                 if (!configSchema.isValid()) {
                     System.out.println(THERE_ARE_VALIDATION_ERRORS_WITH_THE_TEMPLATE_STILL_OUTPUTTING_YAML_BUT_IT_WILL_NEED_TO_BE_EDITED);
                     configSchema.getValidationIssues().forEach(System.out::println);
@@ -392,6 +331,7 @@ public class ConfigMain {
     public Map<String, Command> createCommandMap() {
         Map<String, Command> result = new TreeMap<>();
         result.put(TRANSFORM, new Command(this::transform, "Transform template xml into MiNiFi config YAML"));
+        result.put(TRANSFORM_VFS, new Command(this::transform, "Transform VersionedFlowSnapshot JSON into MiNiFi config YAML"));
         result.put(VALIDATE, new Command(this::validate, "Validate config YAML"));
         result.put(UPGRADE, new Command(this::upgrade, "Upgrade config YAML to current version (" + ConfigSchema.CONFIG_VERSION + ")"));
         return result;

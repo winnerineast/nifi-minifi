@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
@@ -47,6 +48,7 @@ import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.nifi.minifi.bootstrap.configuration.ConfigurationChangeException;
 import org.apache.nifi.minifi.bootstrap.exception.InvalidConfigurationException;
 import org.apache.nifi.minifi.commons.schema.ConfigSchema;
@@ -352,6 +354,46 @@ public class ConfigTransformerTest {
     }
 
     @Test
+    public void doesTransformOnProvenanceRepository() throws Exception {
+        ConfigTransformer.transformConfigFile("./src/test/resources/config-provenance-repository.yml", "./target/");
+        File nifiPropertiesFile = new File("./target/nifi.properties");
+
+        assertTrue(nifiPropertiesFile.exists());
+        assertTrue(nifiPropertiesFile.canRead());
+
+        String nifi = FileUtils.readFileToString(nifiPropertiesFile, Charset.defaultCharset());
+        assertTrue(nifi.contains("nifi.provenance.repository.implementation=org.apache.nifi.provenance.MiNiFiPersistentProvenanceRepository"));
+
+        nifiPropertiesFile.deleteOnExit();
+
+        File flowXml = new File("./target/flow.xml.gz");
+        assertTrue(flowXml.exists());
+        assertTrue(flowXml.canRead());
+
+        flowXml.deleteOnExit();
+    }
+
+    @Test
+    public void doesTransformOnCustomProvenanceRepository() throws Exception {
+        ConfigTransformer.transformConfigFile("./src/test/resources/config-provenance-custom-repository.yml", "./target/");
+        File nifiPropertiesFile = new File("./target/nifi.properties");
+
+        assertTrue(nifiPropertiesFile.exists());
+        assertTrue(nifiPropertiesFile.canRead());
+
+        String nifi = FileUtils.readFileToString(nifiPropertiesFile, Charset.defaultCharset());
+        assertTrue(nifi.contains("nifi.provenance.repository.implementation=org.apache.nifi.provenance.CustomProvenanceRepository"));
+
+        nifiPropertiesFile.deleteOnExit();
+
+        File flowXml = new File("./target/flow.xml.gz");
+        assertTrue(flowXml.exists());
+        assertTrue(flowXml.canRead());
+
+        flowXml.deleteOnExit();
+    }
+
+    @Test
     public void handleTransformInvalidFile() throws Exception {
         try {
             ConfigTransformer.transformConfigFile("./src/test/resources/config-invalid.yml", "./target/");
@@ -496,7 +538,7 @@ public class ConfigTransformerTest {
         assertEquals(remoteProcessingGroupSchema.getId(), getText(element, "id"));
         assertEquals(remoteProcessingGroupSchema.getName(), getText(element, "name"));
         assertEquals(remoteProcessingGroupSchema.getComment(), getText(element, "comment"));
-        assertEquals(remoteProcessingGroupSchema.getUrl(), getText(element, "url"));
+        assertEquals(remoteProcessingGroupSchema.getUrls(), getText(element, "url"));
         assertEquals(remoteProcessingGroupSchema.getTimeout(), getText(element, "timeout"));
         assertEquals(remoteProcessingGroupSchema.getYieldPeriod(), getText(element, "yieldPeriod"));
         assertEquals(remoteProcessingGroupSchema.getTransportProtocol(), getText(element, "transportProtocol"));

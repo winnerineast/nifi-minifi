@@ -20,13 +20,13 @@ limitations under the License.
     <parent>
         <groupId>org.apache</groupId>
         <artifactId>apache</artifactId>
-        <version>17</version>
+        <version>19</version>
         <relativePath />
     </parent>
 
     <groupId>org.apache.nifi.minifi</groupId>
     <artifactId>minifi</artifactId>
-    <version>0.2.1-SNAPSHOT</version>
+    <version>0.6.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <description>Apache NiFi - MiNiFi is a child project effort to aid in the collection and transmission of data close to where it is created.</description>
 
@@ -98,13 +98,15 @@ limitations under the License.
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <inceptionYear>2016</inceptionYear>
         <org.slf4j.version>1.7.25</org.slf4j.version>
-        <org.apache.nifi.version>1.2.0</org.apache.nifi.version>
+        <org.apache.nifi.version>1.8.0</org.apache.nifi.version>
         <logback.version>1.2.3</logback.version>
-        <jetty.version>9.4.3.v20170317</jetty.version>
-        <jersey.version>1.19</jersey.version>
+        <jetty.version>9.4.11.v20180605</jetty.version>
+        <jersey.version>2.26</jersey.version>
         <yammer.metrics.version>2.2.0</yammer.metrics.version>
-        <spring.version>4.2.4.RELEASE</spring.version>
-        <spring.security.version>4.0.3.RELEASE</spring.security.version>
+        <spring.version>4.3.10.RELEASE</spring.version>
+        <spring.security.version>4.2.4.RELEASE</spring.security.version>
+        <system.rules.version>1.16.1</system.rules.version>
+        <aws.sdk.version>1.11.172</aws.sdk.version>
     </properties>
 
     <dependencies>
@@ -130,48 +132,48 @@ limitations under the License.
             <dependency>
                 <groupId>org.apache.nifi.minifi</groupId>
                 <artifactId>minifi-bootstrap</artifactId>
-                <version>0.2.1-SNAPSHOT</version>
+                <version>0.6.0-SNAPSHOT</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.nifi.minifi</groupId>
                 <artifactId>minifi-nar-utils</artifactId>
-                <version>0.2.1-SNAPSHOT</version>
+                <version>0.6.0-SNAPSHOT</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.nifi.minifi</groupId>
                 <artifactId>minifi-utils</artifactId>
-                <version>0.2.1-SNAPSHOT</version>
+                <version>0.6.0-SNAPSHOT</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.nifi.minifi</groupId>
                 <artifactId>minifi-api</artifactId>
-                <version>0.2.1-SNAPSHOT</version>
+                <version>0.6.0-SNAPSHOT</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.nifi.minifi</groupId>
                 <artifactId>minifi-framework</artifactId>
-                <version>0.2.1-SNAPSHOT</version>
+                <version>0.6.0-SNAPSHOT</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.nifi.minifi</groupId>
                 <artifactId>minifi-framework-nar</artifactId>
-                <version>0.2.1-SNAPSHOT</version>
+                <version>0.6.0-SNAPSHOT</version>
                 <type>nar</type>
             </dependency>
             <dependency>
                 <groupId>org.apache.nifi.minifi</groupId>
                 <artifactId>minifi-framework-core</artifactId>
-                <version>0.2.1-SNAPSHOT</version>
+                <version>0.6.0-SNAPSHOT</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.nifi.minifi</groupId>
                 <artifactId>minifi-resources</artifactId>
-                <version>0.2.1-SNAPSHOT</version>
+                <version>0.6.0-SNAPSHOT</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.nifi.minifi</groupId>
                 <artifactId>minifi-provenance-repository-nar</artifactId>
-                <version>0.2.1-SNAPSHOT</version>
+                <version>0.6.0-SNAPSHOT</version>
                 <type>nar</type>
             </dependency>
             <dependency>
@@ -179,53 +181,58 @@ limitations under the License.
                 <artifactId>minifi-resources</artifactId>
                 <classifier>resources</classifier>
                 <type>zip</type>
-                <version>0.2.1-SNAPSHOT</version>
+                <version>0.6.0-SNAPSHOT</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.nifi.minifi</groupId>
                 <artifactId>minifi-runtime</artifactId>
-                <version>0.2.1-SNAPSHOT</version>
+                <version>0.6.0-SNAPSHOT</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.nifi.minifi</groupId>
                 <artifactId>minifi-persistent-provenance-repository</artifactId>
-                <version>0.2.1-SNAPSHOT</version>
+                <version>0.6.0-SNAPSHOT</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.nifi.minifi</groupId>
                 <artifactId>minifi-framework-bundle</artifactId>
-                <version>0.2.1-SNAPSHOT</version>
+                <version>0.6.0-SNAPSHOT</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.nifi.minifi</groupId>
                 <artifactId>minifi-framework-nar</artifactId>
-                <version>0.2.1-SNAPSHOT</version>
+                <version>0.6.0-SNAPSHOT</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.nifi.minifi</groupId>
                 <artifactId>minifi-standard-nar</artifactId>
-                <version>0.2.1-SNAPSHOT</version>
+                <version>0.6.0-SNAPSHOT</version>
                 <type>nar</type>
             </dependency>
             <dependency>
                 <groupId>org.apache.nifi.minifi</groupId>
                 <artifactId>minifi-update-attribute-nar</artifactId>
-                <version>0.2.1-SNAPSHOT</version>
+                <version>0.6.0-SNAPSHOT</version>
                 <type>nar</type>
             </dependency>
             <dependency>
                 <groupId>org.apache.nifi.minifi</groupId>
                 <artifactId>minifi-ssl-context-service-nar</artifactId>
-                <version>0.2.1-SNAPSHOT</version>
+                <version>0.6.0-SNAPSHOT</version>
                 <type>nar</type>
             </dependency>
             <dependency>
                 <groupId>org.apache.nifi.minifi</groupId>
                 <artifactId>minifi-docs</artifactId>
-                <version>0.2.1-SNAPSHOT</version>
+                <version>0.6.0-SNAPSHOT</version>
                 <classifier>resources</classifier>
                 <scope>runtime</scope>
                 <type>zip</type>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.nifi.minifi</groupId>
+                <artifactId>minifi-provenance-repositories</artifactId>
+                <version>0.6.0-SNAPSHOT</version>
             </dependency>
 
             <dependency>
@@ -573,25 +580,25 @@ limitations under the License.
             <dependency>
                 <groupId>org.bouncycastle</groupId>
                 <artifactId>bcprov-jdk15on</artifactId>
-                <version>1.55</version>
+                <version>1.60</version>
                 <scope>provided</scope>
             </dependency>
             <dependency>
                 <groupId>org.bouncycastle</groupId>
                 <artifactId>bcpg-jdk15on</artifactId>
-                <version>1.55</version>
+                <version>1.60</version>
                 <scope>provided</scope>
             </dependency>
             <dependency>
                 <groupId>org.bouncycastle</groupId>
                 <artifactId>bcpkix-jdk15on</artifactId>
-                <version>1.55</version>
+                <version>1.60</version>
                 <scope>provided</scope>
             </dependency>
             <dependency>
                 <groupId>org.apache.httpcomponents</groupId>
                 <artifactId>httpcore</artifactId>
-                <version>4.4.1</version>
+                <version>4.4.4</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.httpcomponents</groupId>
@@ -640,7 +647,7 @@ limitations under the License.
             <dependency>
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-compress</artifactId>
-                <version>1.11</version>
+                <version>1.18</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.commons</groupId>
@@ -695,12 +702,12 @@ limitations under the License.
             <dependency>
                 <groupId>com.jcraft</groupId>
                 <artifactId>jsch</artifactId>
-                <version>0.1.52</version>
+                <version>0.1.54</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.httpcomponents</groupId>
                 <artifactId>httpclient</artifactId>
-                <version>4.4.1</version>
+                <version>4.5.3</version>
             </dependency>
             <dependency>
                 <groupId>javax.mail</groupId>
@@ -740,38 +747,6 @@ limitations under the License.
                         <artifactId>c3p0</artifactId>
                     </exclusion>
                 </exclusions>
-            </dependency>
-            <dependency>
-                <groupId>com.sun.jersey.contribs</groupId>
-                <artifactId>jersey-spring</artifactId>
-                <version>${jersey.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>org.springframework</groupId>
-                        <artifactId>spring-web</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.springframework</groupId>
-                        <artifactId>spring-core</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.springframework</groupId>
-                        <artifactId>spring-aop</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.springframework</groupId>
-                        <artifactId>spring-context</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.springframework</groupId>
-                        <artifactId>spring-beans</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <dependency>
-                <groupId>com.sun.jersey.contribs</groupId>
-                <artifactId>jersey-multipart</artifactId>
-                <version>${jersey.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.springframework</groupId>
@@ -985,7 +960,7 @@ limitations under the License.
             <dependency>
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-collections4</artifactId>
-                <version>4.0</version>
+                <version>4.2</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.commons</groupId>
@@ -1020,12 +995,12 @@ limitations under the License.
             <dependency>
                 <groupId>org.apache.activemq</groupId>
                 <artifactId>activemq-client</artifactId>
-                <version>5.12.1</version>
+                <version>5.15.6</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.activemq</groupId>
                 <artifactId>activemq-broker</artifactId>
-                <version>5.12.1</version>
+                <version>5.15.6</version>
                 <scope>test</scope>
             </dependency>
             <dependency>
@@ -1065,28 +1040,18 @@ limitations under the License.
                 <version>1.7.7</version>
             </dependency>
             <dependency>
-                <groupId>com.sun.jersey</groupId>
+                <groupId>org.glassfish.jersey.core</groupId>
                 <artifactId>jersey-server</artifactId>
                 <version>${jersey.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.sun.jersey</groupId>
-                <artifactId>jersey-core</artifactId>
-                <version>${jersey.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.sun.jersey</groupId>
-                <artifactId>jersey-json</artifactId>
-                <version>${jersey.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.sun.jersey</groupId>
-                <artifactId>jersey-servlet</artifactId>
-                <version>${jersey.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.sun.jersey</groupId>
+                <groupId>org.glassfish.jersey.core</groupId>
                 <artifactId>jersey-client</artifactId>
+                <version>${jersey.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.glassfish.jersey.containers</groupId>
+                <artifactId>jersey-container-servlet-core</artifactId>
                 <version>${jersey.version}</version>
             </dependency>
             <dependency>
@@ -1104,7 +1069,7 @@ limitations under the License.
             <dependency>
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
-                <version>18.0</version>
+                <version>26.0-jre</version>
             </dependency>
             <dependency>
                 <groupId>com.h2database</groupId>
@@ -1124,7 +1089,7 @@ limitations under the License.
             <dependency>
                 <groupId>com.fasterxml.jackson.core</groupId>
                 <artifactId>jackson-databind</artifactId>
-                <version>2.6.1</version>
+                <version>2.9.7</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.spark</groupId>

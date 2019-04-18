@@ -18,7 +18,7 @@
 package org.apache.nifi.minifi.status;
 
 import org.apache.nifi.components.ValidationResult;
-import org.apache.nifi.controller.ConfiguredComponent;
+import org.apache.nifi.controller.ComponentNode;
 import org.apache.nifi.controller.FlowController;
 import org.apache.nifi.controller.ProcessorNode;
 import org.apache.nifi.controller.ReportingTaskNode;
@@ -94,6 +94,21 @@ public class StatusConfigReporterTest {
         populateProcessor(false, false);
 
         String statusRequest = "processor:all:health";
+        FlowStatusReport actual = StatusConfigReporter.getStatus(mockFlowController, statusRequest, LoggerFactory.getLogger(StatusConfigReporterTest.class));
+
+        FlowStatusReport expected = new FlowStatusReport();
+        expected.setErrorsGeneratingReport(Collections.EMPTY_LIST);
+
+        addProcessorStatus(expected, true, false, false, false, false);
+
+        assertEquals(expected, actual);
+    }
+
+    @Test
+    public void individualProcessorStatusHealth() throws Exception {
+        populateProcessor(false, false);
+
+        String statusRequest = "processor:UpdateAttributeProcessorId:health";
         FlowStatusReport actual = StatusConfigReporter.getStatus(mockFlowController, statusRequest, LoggerFactory.getLogger(StatusConfigReporterTest.class));
 
         FlowStatusReport expected = new FlowStatusReport();
@@ -636,7 +651,7 @@ public class StatusConfigReporterTest {
         ConnectionStatus connectionStatus = new ConnectionStatus();
         connectionStatus.setQueuedBytes(100);
         connectionStatus.setId("connectionId");
-        connectionStatus.setName("connectionId");
+        connectionStatus.setName("connectionName");
         connectionStatus.setQueuedCount(10);
         connectionStatus.setInputCount(1);
         connectionStatus.setInputBytes(2);
@@ -657,7 +672,7 @@ public class StatusConfigReporterTest {
         ProcessorStatus processorStatus = new ProcessorStatus();
         processorStatus.setType("org.apache.nifi.processors.attributes.UpdateAttribute");
         processorStatus.setId("UpdateAttributeProcessorId");
-        processorStatus.setName("UpdateAttributeProcessorId");
+        processorStatus.setName("UpdateAttributeProcessorName");
         processorStatus.setRunStatus(RunStatus.Stopped);
         processorStatus.setActiveThreadCount(1);
         processorStatus.setFlowFilesReceived(2);
@@ -834,7 +849,7 @@ public class StatusConfigReporterTest {
         when(bulletinRepo.findBulletins(anyObject())).then(bulletinQueryAnswer);
     }
 
-    private void addValidationErrors(ConfiguredComponent connectable) {
+    private void addValidationErrors(ComponentNode connectable) {
         ValidationResult validationResult = new ValidationResult.Builder()
                 .input("input")
                 .subject("subject")

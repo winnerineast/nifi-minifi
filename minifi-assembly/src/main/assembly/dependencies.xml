@@ -107,7 +107,7 @@
             </includes>
             <unpack>true</unpack>
             <unpackOptions>
-                <filtered>true</filtered>
+                <filtered>false</filtered>
                 <includes>
                     <include>bin/*</include>
                 </includes>
@@ -135,6 +135,17 @@
         </dependencySet>
     </dependencySets>
     <files>
+        <file>
+            <source>./target/minifi.exe</source>
+            <outputDirectory>./bin</outputDirectory>
+            <filtered>false</filtered>
+        </file>
+        <file>
+            <source>./target/minifiw.exe</source>
+            <outputDirectory>./bin</outputDirectory>
+            <filtered>false</filtered>
+        </file>
+
         <file>
             <source>./README.md</source>
             <outputDirectory>./</outputDirectory>

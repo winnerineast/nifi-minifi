@@ -16,21 +16,25 @@
 # under the License.
 #
 
-FROM openjdk:8
+FROM openjdk:8-jre-alpine
 MAINTAINER Apache MiNiFi <dev@nifi.apache.org>
 
 ARG UID=1000
-ARG GID=50
-ARG MINIFI_VERSION=0.2.0
+ARG GID=1000
+ARG MINIFI_VERSION=0.5.0
 
 ENV MINIFI_BASE_DIR /opt/minifi
 ENV MINIFI_HOME $MINIFI_BASE_DIR/minifi-$MINIFI_VERSION
 ENV MINIFI_BINARY_URL https://archive.apache.org/dist/nifi/minifi/$MINIFI_VERSION/minifi-$MINIFI_VERSION-bin.tar.gz
 
 # Setup MiNiFi user
-RUN groupadd -g $GID minifi || groupmod -n minifi `getent group $GID | cut -d: -f1`
-RUN useradd --shell /bin/bash -u $UID -g $GID -m minifi
+RUN addgroup -g $GID minifi || groupmod -n minifi `getent group $GID | cut -d: -f1`
+RUN adduser -S -H -G minifi minifi
 RUN mkdir -p $MINIFI_HOME
+
+RUN apk --no-cache add curl
+
+ADD sh/ ${MINIFI_BASE_DIR}/scripts/
 
 # Download, validate, and expand Apache MiNiFi binary.
 RUN curl -fSL $MINIFI_BINARY_URL -o $MINIFI_BASE_DIR/minifi-$MINIFI_VERSION-bin.tar.gz \
@@ -43,4 +47,4 @@ RUN chown -R minifi:minifi $MINIFI_HOME
 USER minifi
 
 # Startup MiNiFi
-CMD $MINIFI_HOME/bin/minifi.sh run
+CMD ${MINIFI_BASE_DIR}/scripts/start.sh
